@@ -5,6 +5,7 @@ import os
 import pytz
 import requests
 import sqlite3
+import pprint
 
 from pprint import PrettyPrinter
 from datetime import datetime, timedelta
@@ -63,20 +64,22 @@ def results():
     # TODO: Use 'request.args' to retrieve the city & units from the query
     # parameters.
     city = request.args.get('city')
-    units = request.args.get('units')
+    units = request.args.get('unit')
 
     url = 'http://api.openweathermap.org/data/2.5/weather'
     params = {
         # TODO: Enter query parameters here for the 'appid' (your api key),
         # the city, and the units (metric or imperial).
         # See the documentation here: https://openweathermap.org/current
-        'q': city,
         'appid': API_KEY,
+        'q': city,
         'units': units
 
     }
 
     result_json = requests.get(url, params=params).json()
+
+    pprint.pprint(result_json)
 
     # Uncomment the line below to see the results of the API call!
     pp.pprint(result_json)
@@ -87,6 +90,9 @@ def results():
     # For the sunrise & sunset variables, I would recommend to turn them into
     # datetime objects. You can do so using the `datetime.fromtimestamp()` 
     # function.
+    sunrise = datetime.fromtimestamp(result.json['sys']['sunrise'])
+    sunset = datetime.fromtimestamp(result.json['sys']['sunset'])
+
     context = {
         'date': datetime.now(),
         'city': result_json['name'],
@@ -95,7 +101,7 @@ def results():
         'humidity': result_json['main']['humidity'],
         'wind_speed': result_json['wind']['speed'],
         'sunrise': sunrise.strftime("%b %d %Y %H:%M:%S"),
-        'sunset': sunrise.strftime("%b %d %Y %H:%M:%S"),
+        'sunset': sunset.strftime("%b %d %Y %H:%M:%S"),
         'units_letter': get_letter_for_units(units)
     }
 
@@ -105,13 +111,27 @@ def get_min_temp(results):
     """Returns the minimum temp for the given hourly weather objects."""
     # TODO: Fill in this function to return the minimum temperature from the
     # hourly weather data.
-    pass
+    min_temp = 1000
+    for hourly_results in results:
+        for hourly_info in hourly_results:
+            if hourly_info == 'temp':
+                if hourly_results[hourly_info] < min_temp:
+                    min_temp = hourly_results[hourly_info]
+    
+    return min_temp
 
 def get_max_temp(results):
     """Returns the maximum temp for the given hourly weather objects."""
     # TODO: Fill in this function to return the maximum temperature from the
     # hourly weather data.
-    pass
+    max_temp = 0
+    for hourly_results in results:
+        for hourly_info in hourly_results:
+            if hourly_info == 'temp':
+                if hourly_results[hourly_info] > max_temp:
+                    max_temp = hourly_result[hourly_info]
+    
+    return max_temp
 
 def get_lat_lon(city_name):
     geolocator = Nominatim(user_agent='Weather Application')
@@ -126,13 +146,16 @@ def historical_results():
     """Displays historical weather forecast for a given day."""
     # TODO: Use 'request.args' to retrieve the city & units from the query
     # parameters.
-    city = ''
-    date = '2020-08-26'
-    units = ''
+    city = request.args.get('city')
+    date = request.args.get('date')
+    units = request.args.get('units')
     date_obj = datetime.strptime(date, '%Y-%m-%d')
-    date_in_seconds = date_obj.strftime('%s')
+    date_in_seconds = date_obj.strftime('%S')
 
     latitude, longitude = get_lat_lon(city)
+
+    print(latitude)
+    print(longitude)
 
     url = 'http://api.openweathermap.org/data/2.5/onecall/timemachine'
     params = {
@@ -140,7 +163,11 @@ def historical_results():
         # latitude, longitude, units, & date (in seconds).
         # See the documentation here (scroll down to "Historical weather data"):
         # https://openweathermap.org/api/one-call-api
-        
+        'lat': latitude,
+        'lon': longitude,
+        'units': units,
+        'exclude': 'daily',
+        'appid': API_KEY
     }
 
     result_json = requests.get(url, params=params).json()
@@ -198,7 +225,7 @@ def graph(lat, lon, units, date):
     @param date The date, in the format %Y-%m-%d.
     """
     date_obj = datetime.strptime(date, '%Y-%m-%d')
-    date_in_seconds = date_obj.strftime('%s')
+    date_in_seconds = date_obj.strftime('%S')
 
 
     url = 'http://api.openweathermap.org/data/2.5/onecall/timemachine'
